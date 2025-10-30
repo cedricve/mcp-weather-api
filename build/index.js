@@ -1,9 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import express from "express";
 import { z } from "zod";
 const NWS_API_BASE = "https://api.weather.gov";
 const USER_AGENT = "weather-app/1.0";
-// Create server instance
+// Create MCP server instance (stdio-based)
 const server = new McpServer({
     name: "weather",
     version: "1.0.0",
@@ -12,6 +13,32 @@ const server = new McpServer({
         tools: {},
     },
 });
+// Write a function to sort an array
+function sortArray(arr) {
+    return arr.sort((a, b) => a - b);
+}
+// Example usage of sortArray
+const unsortedArray = [5, 2, 9, 1, 5, 6];
+const sortedArray = sortArray(unsortedArray);
+console.log("Sorted Array:", sortedArray);
+// Example function to reverse a string
+function reverseString(str) {
+    return str.split("").reverse().join("");
+}
+// Example usage of reverseString
+const originalString = "hello";
+const reversedString = reverseString(originalString);
+console.log("Reversed String:", reversedString);
+// Optimize the factorial function using memoization to improve efficiency
+const factorialMemo = {};
+function factorial(n) {
+    if (n <= 1)
+        return 1;
+    if (factorialMemo[n])
+        return factorialMemo[n];
+    factorialMemo[n] = n * factorial(n - 1);
+    return factorialMemo[n];
+}
 // Register weather tools
 server.tool("get-alerts", "Get weather alerts for a state", {
     state: z.string().length(2).describe("Two-letter state code (e.g. CA, NY)"),
@@ -162,4 +189,84 @@ async function main() {
 main().catch((error) => {
     console.error("Fatal error in main():", error);
     process.exit(1);
+});
+const tickets = [];
+// Zod schema for ticket creation
+const ticketSchema = z.object({
+    origin: z
+        .string()
+        .length(3)
+        .transform((s) => s.toUpperCase())
+        .refine((s) => /^[A-Z]{3}$/.test(s), { message: "origin must be a 3-letter IATA code" }),
+    destination: z
+        .string()
+        .length(3)
+        .transform((s) => s.toUpperCase())
+        .refine((s) => /^[A-Z]{3}$/.test(s), { message: "destination must be a 3-letter IATA code" }),
+    travelDate: z
+        .string()
+        .refine((d) => !isNaN(Date.parse(d)), { message: "travelDate must be a valid ISO date" }),
+    seatClass: z.enum(["economy", "business", "first"]),
+    quantity: z.number().int().positive(),
+    passengerNames: z.array(z.string().min(1)).nonempty(),
+});
+// Express app setup
+const app = express();
+app.use(express.json());
+// Health endpoint
+app.get("/health", (_req, res) => {
+    const pkgVersion = "1.0.0"; // Could import from package.json with dynamic import if needed
+    res.json({
+        status: "ok",
+        uptimeSeconds: Math.round(process.uptime()),
+        version: pkgVersion,
+        tickets: tickets.length,
+        timestamp: new Date().toISOString(),
+    });
+});
+// Create tickets endpoint
+app.post("/tickets", (req, res) => {
+    const parseResult = ticketSchema.safeParse(req.body);
+    if (!parseResult.success) {
+        return res.status(400).json({
+            error: "Invalid request body",
+            details: parseResult.error.issues.map((i) => ({ path: i.path, message: i.message })),
+        });
+    }
+    const data = parseResult.data;
+    if (data.quantity !== data.passengerNames.length) {
+        return res.status(400).json({
+            error: "quantity must match passengerNames length",
+        });
+    }
+    // Simple ID generator
+    const baseId = `${data.origin}-${data.destination}-${Date.now()}`;
+    const createdAt = new Date().toISOString();
+    const createdTickets = data.passengerNames.map((name, idx) => {
+        return {
+            id: `${baseId}-${idx + 1}`,
+            origin: data.origin,
+            destination: data.destination,
+            travelDate: data.travelDate,
+            seatClass: data.seatClass,
+            passengerNames: [name],
+            quantity: 1,
+            createdAt,
+        };
+    });
+    tickets.push(...createdTickets);
+    res.status(201).json({
+        message: "Tickets created",
+        count: createdTickets.length,
+        tickets: createdTickets,
+    });
+});
+// List tickets endpoint (optional convenience)
+app.get("/tickets", (_req, res) => {
+    res.json({ count: tickets.length, tickets });
+});
+// Start server only if not under test
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+app.listen(PORT, () => {
+    console.error(`HTTP API server listening on port ${PORT}`);
 });
