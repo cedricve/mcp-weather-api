@@ -5,7 +5,9 @@
   "appPort": [3000],
   "extensions": [
     "dbaeumer.vscode-eslint",
-    "esbenp.prettier-vscode"
+    "esbenp.prettier-vscode",
+    "GitHub.copilot"
+    
   ],
   "settings": {
     "terminal.integrated.shell.linux": "/bin/bash"

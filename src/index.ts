@@ -15,6 +15,35 @@ const server = new McpServer({
   },
 });
 
+// Write a function to sort an array
+function sortArray(arr: number[]): number[] {
+  return arr.sort((a, b) => a - b);
+}
+
+// Example usage of sortArray
+const unsortedArray = [5, 2, 9, 1, 5, 6];
+const sortedArray = sortArray(unsortedArray);
+console.log("Sorted Array:", sortedArray);
+
+// Example function to reverse a string
+function reverseString(str: string): string {
+  return str.split("").reverse().join("");
+}
+
+// Example usage of reverseString
+const originalString = "hello";
+const reversedString = reverseString(originalString);
+console.log("Reversed String:", reversedString);
+
+// Optimize the factorial function using memoization to improve efficiency
+const factorialMemo: { [key: number]: number } = {};
+
+function factorial(n: number): number {
+  if (n <= 1) return 1;
+  if (factorialMemo[n]) return factorialMemo[n];
+  factorialMemo[n] = n * factorial(n - 1);
+  return factorialMemo[n];
+}
 
 // Register weather tools
 server.tool(
