@@ -3,7 +3,9 @@
   "bin": {
     "weather": "./build/index.js"
   },
-  "files": ["build"],
+  "files": [
+    "build"
+  ],
   "name": "nodejs-devcontainer",
   "version": "1.0.0",
   "description": "A Node.js project configured for development in a container.",
